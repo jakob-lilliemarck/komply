@@ -28,9 +28,16 @@ through OpenRouter, then prints a pass / violation / unsure checklist.
 
 ## Project skills
 
-`.opencode/skills/` carries komply-specific adaptations of `services`,
-`repositories`, `config`, `review-branch`, `brain-dump`, and `task-authoring`.
-`documentation` and `skill-authoring` are copied with only the task-path change.
+`.opencode/skills/` is copied from `~/Projects/relay/.opencode/skills/` for the
+eight skills both projects use: `brain-dump`, `config`, `documentation`,
+`repositories`, `review-branch`, `services`, `skill-authoring`, and
+`task-authoring`. The source skills assume sqlx database repositories and DI.
+Their module, error, and test structure applies where it fits; the database,
+migration, query, DI, and database-entity model sections do not. Repository
+models live in each repository's `models.rs` and are plain read-only value
+types. `config` is adapted to komply's TOML project policy and environment
+credentials.
+
 `controllers`, `views`, `events`, `jobs`, `di`, `distill`, `epic-authoring`, and
 `review-codebase` are deliberately absent: this project has no HTTP layer,
 views, event bus, job queue, DI container, or Relay board.

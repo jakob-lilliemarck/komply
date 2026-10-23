@@ -11,7 +11,7 @@ description: |
 Komply has two kinds of outside value:
 
 - **Config** — project policy: model, thresholds, size cap, timeout.
-- **Credentials** — the OpenRouter API key.
+- **Credentials** — the OpenRouter API key and the optional endpoint override.
 
 They enter through different paths.
 
@@ -65,11 +65,11 @@ validation to the service.
 
 - `OPENROUTER_API_KEY` is read only by `DecisionsRepository::from_env`, at the
   moment a live run constructs the client.
+- `COMPLY_DECISIONS_URL` overrides the endpoint for development and tests. It is
+  also read only by `from_env`; absent means the production URL.
 - The key is never part of `Config`, never passed to the service, never printed,
   and never written to disk.
 - `--dry-run` and every test must work with no key.
-- `COMPLY_DECISIONS_URL` overrides the endpoint for development and tests. It is
-  also read only by `from_env`; absent means the production URL.
 
 ## Config is a value
 
@@ -91,9 +91,10 @@ conversion in `Config::load`.
 
 - Missing file returns defaults.
 - A complete file returns every value.
+- A file with absent keys uses the defaults for those keys.
 - Malformed TOML is a parse error.
 - Each validation rule has a test.
-- A credential test never asserts against a real key; use a lookup closure or a
+- Credential tests never assert against a real key; use a lookup closure or a
   missing-key case.
 
 ## Related skills

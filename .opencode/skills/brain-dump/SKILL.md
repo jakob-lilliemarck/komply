@@ -1,16 +1,16 @@
 ---
 name: brain-dump
 description: |
-  Use when refining a raw idea — a brain dump, a list of thoughts, or a message —
-  into settled work. Read the code, question the idea, judge it, then write it
-  under `.dev/planning/`.
+  Use when refining a user's raw idea — a brain dump, a list of thoughts, or a
+  message — into settled work. Read the code, question the idea, judge it, then
+  write it to the board.
 ---
 
 # Handling a brain dump
 
 A user's ideas arrive raw: a `BRAINDUMP.md`, a list of thoughts, or a message
 thrown at you in chat. An entry may be a one-line idea or a written-out request.
-The job is to turn each entry into work a builder can act on.
+The job is to turn each entry into work the board can run.
 
 Never edit a source file the user gives you; it is their input. Ideas from chat
 have no file to touch.
@@ -47,21 +47,16 @@ Work through the ideas one at a time. For each:
    so and move on.
 5. **Size it.** Say how to carry it out, what it costs, what it breaks, and the
    alternatives.
-6. **Pick the planning method** and write the artifact under `.dev/planning/`.
+6. **Pick the planning method** (below), read the matching skill, and write the
+   artifact to the board.
 
 ## Pick the planning method
 
-An idea lands as one of three shapes:
-
-- a **single task** — one reviewable change;
-- a **series of tasks** under one epic name — the whole change is named now,
-  each task is one reviewable slice;
-- a **local epic** — larger work whose design doc leaves room for later slices.
-
-A local epic gets `.dev/planning/<epic>/README.md`,
-`.dev/planning/<epic>/<epic>.md`, and task briefs under
-`.dev/planning/<epic>/tasks/`. The global
-`.dev/planning/README.md` lists every epic.
+An idea lands as one of three shapes. A **single task**, or a **series of tasks**
+grouped under one epic name, is written per `@task-authoring`; a **relay epic** —
+larger work that steers itself by goal and bounds — is written per
+`@epic-authoring`. A series names every task now; a relay epic leaves each leg to
+choose its next slice.
 
 ## Working with the user
 
@@ -73,12 +68,13 @@ A local epic gets `.dev/planning/<epic>/README.md`,
 ## Blast radius
 
 For each idea to be built, state what it touches and what it costs: the files and
-modules; any config or Cargo change; whether tests or fixtures change; whether a
-credential, network call, or file read is introduced; and any coupling risk.
-Apply this project's invariants from `AGENTS.md` when it exists, and from the
-planning doc otherwise. Never work from memory.
+modules; any migration it needs and the query-cache refresh that follows; API or
+JSON shape changes a caller would feel; and any service-boundary or cross-service
+coupling risk. Apply the project's invariants — append-only storage, service
+boundaries, the migration workflow — from `AGENTS.md` rather than from memory.
 
 ## Hand off
 
-Write tasks with `@task-authoring`. Then update the planning map so the new work
-is discoverable.
+Open the skill for the chosen method and write the artifact with it:
+`@task-authoring` for tasks, `@epic-authoring` for a relay epic. Then create the
+work on the board.

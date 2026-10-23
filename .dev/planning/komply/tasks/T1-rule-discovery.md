@@ -68,7 +68,10 @@ pub struct TestRequest {
     pub target: std::path::PathBuf,
     pub rules: Option<std::path::PathBuf>,
 }
+```
 
+```rust
+// src/services/testing/repositories/rules/models.rs — new
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuleSet {
     pub path: Option<String>,
@@ -99,7 +102,10 @@ impl RulesRepository {
     pub fn new() -> Self;
     pub fn load(&self, path: &std::path::Path) -> Result<Vec<RuleSet>, Error>;
 }
+```
 
+```rust
+// src/services/testing/repositories/rules/errors.rs — new
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("could not read `{path}`: {source}")]

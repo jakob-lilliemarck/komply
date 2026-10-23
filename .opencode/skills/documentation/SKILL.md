@@ -5,7 +5,7 @@ description: |
   code comments. Covers plain-language writing, the three documentation levels
   (docs, docstrings, comments), contract-first docstrings, and keeping
   documentation local to the code it describes. Do NOT use for task files
-  under `.dev/planning/` — see the task-authoring skill.
+  under docs/tasks/ — see the task-authoring skill.
 ---
 
 # Documentation

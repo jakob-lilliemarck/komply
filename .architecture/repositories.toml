@@ -1,0 +1,31 @@
+path = "src/services/*/repositories/*"
+
+[[rules]]
+id = "repo.no-hidden-inputs"
+statement = "A repository method other than `from_env` reads environment variables, the current directory, or the system clock."
+enabled = true
+
+[[rules]]
+id = "repo.domain-returns"
+statement = "A public repository method returns an HTTP response, a serialization type, or a string error instead of a domain value or a typed `thiserror` error."
+enabled = true
+
+[[rules]]
+id = "repo.no-side-effects"
+statement = "A public method in this repository prints to the terminal, exits the process, writes to disk, or sends an HTTP request from `rules/` or `files/`."
+enabled = true
+
+[[rules]]
+id = "repo.no-domain-policy"
+statement = "The code compares a probability with a configured threshold, creates a `Verdict`, or selects rule sets by matching a rule file's `path` against the tested directory."
+enabled = true
+
+[[rules]]
+id = "repo.no-cross-repository-dependency"
+statement = "The code contains a line that starts with `use crate::services::testing::repositories::`."
+enabled = true
+
+[[rules]]
+id = "repo.no-upward-dependency"
+statement = "The code imports a type from the service model at `crate::services::testing::model`."
+enabled = true

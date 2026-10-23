@@ -21,7 +21,8 @@ final checklists, and map the result to the agreed exit codes.
   input-token count.
 - Exit codes are `0` all pass, `1` any violation, `3` unsure with no violation,
   and `2` any error.
-- `README.md` documents installation, usage, the rule file schema, config
+- `README.md` is a short introduction with installation and a quick start, and
+  links to `docs/index.md`. The docs cover usage, the rule file schema, config
   defaults, `.complyignore`, the security note about sending files to
   OpenRouter, and the exit codes.
 - `cargo test` passes, including a service test against a local Decisions stub.
@@ -94,8 +95,6 @@ impl Service {
 
 ```rust
 // src/services/testing/errors.rs — additions
-#[error("decisions response is missing an answer for `{0}`")]
-MissingAnswer(String),
 #[error(transparent)]
 Decisions(#[from] crate::services::testing::repositories::decisions::Error),
 ```
@@ -121,11 +120,13 @@ fn print_report(report: &Report);
 
 ### Evaluation
 
-- `Service::run` calls `decisions.evaluate(&prepared.evaluation)` once.
+- `Service::run` calls `decisions.evaluate(&prepared.evaluation)` once. The
+  repository retries transient failures internally; the service does not.
 - It walks the prepared rules and questions in their shared order. For each
-  pair it reads `response.answers[question.key]` and builds a `RuleResult` with
+  pair it reads `decision.answers[question.key]` and builds a `RuleResult` with
   the rule id, statement, probability, and `verdict`.
-- A missing answer is `MissingAnswer(question.key)`.
+- The repository validates every requested key before returning. A missing
+  answer reaches the service as `Decisions(decisions::Error::MissingAnswer)`.
 - `Report` carries the prepared target and source display paths, model,
   `document.files.len()`, `document.total_bytes`, skipped files, results, and
   the usage values.
@@ -137,8 +138,8 @@ fn print_report(report: &Report);
 
 - `comply test <dir>` builds `Config`, applies `--model`, prepares the test, and
   prints the header and pending list before any network call.
-- It constructs `DecisionsRepository::from_env(config.request_timeout,
-  RetryPolicy::default())`. A missing key or any client error exits `2`.
+- It constructs `DecisionsRepository::from_env(config.request_timeout)`. A
+  missing key or any client error exits `2`.
 - It calls `Service::run`, prints the final list, the summary, the cost when
   present, and the input-token count when present.
 - `--dry-run` keeps the T2 path: header, file summary, redacted request JSON,
@@ -208,7 +209,8 @@ summaries are uncoloured. There is no cursor movement and no spinner.
 - `Service::run` against a stub returns one `RuleResult` per enabled rule, in
   rule order, with the expected verdicts.
 - `Service::run` copies cost and token usage into the report.
-- `Service::run` returns `MissingAnswer` when the stub omits a requested key.
+- `Service::run` returns `Decisions(MissingAnswer)` when the stub omits a
+  requested key.
 - `Service::check` prepares and evaluates in one call.
 - `exit_code` returns `0`, `1`, and `3` for the three report shapes, and
   violation wins over unsure.
@@ -223,6 +225,5 @@ summaries are uncoloured. There is no cursor movement and no spinner.
 
 - No caching, retries outside the decisions repository, line numbers, JSON
   output, `--no-color`, threshold flags, or `--fail-on-unsure`.
-- The README's security section must say that every included file is sent to
-  OpenRouter and that `.complyignore` / `[files].exclude` are the way to keep
-  secrets out.
+- `docs/security.md` must say that every included file is sent to OpenRouter
+  and that `.complyignore` / `[files].exclude` are the way to keep secrets out.

@@ -39,7 +39,7 @@ rules it could get wrong by guessing.
 | `AGENTS.md` | Rules that apply to every change |
 | `docs/` | How this particular system works — its domain and decisions |
 | `.opencode/skills/<name>/SKILL.md` | How to do one job, in any domain |
-| `.dev/planning/` | One unit of work — the what and the why |
+| `docs/tasks/` | One unit of work — the what and the why |
 
 Do not create a skill that only restates a doc or `AGENTS.md`; link to the home
 instead. If the content is domain knowledge, write a doc. If it is a unit of
@@ -78,11 +78,11 @@ somewhere else, link to it with `@` and the skill's name (`@services`) or a
 markdown link. Repositories own repository rules; services own service rules;
 project-wide invariants belong in `AGENTS.md`.
 
-For example, the services skill explains which rule sets apply to a path. The
-loading rule is defined in `@repositories`, so the services skill could say:
+For example, the services skill explains the order in which a service registers
+its providers. A provider function is defined in `@di`, so the skill could say:
 
-> The service selects the rule sets by path; the rules repository only loads
-> them. The loading contract is defined in `@repositories`.
+> The service's `register` calls each sub-repository provider, then its own
+> provider. The provider functions are defined in `@di`.
 
 Within a skill, state each rule once, in the section where the reader needs it.
 A rule needed in two sections lives in the first one and is referred to from the

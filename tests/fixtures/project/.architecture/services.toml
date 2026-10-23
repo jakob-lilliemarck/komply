@@ -1,0 +1,6 @@
+path = "src/services/*"
+
+[[rules]]
+id = "service.no-cross-service-writes"
+statement = "The code writes to a table owned by another service."
+enabled = true

@@ -25,7 +25,8 @@ to the project it checks.
 - Exit codes: `0` all pass, `1` any violation, `3` unsure with no violation,
   `2` any setup, config, network, or document error.
 - The rule format, config format, and `.complyignore` behaviour are documented
-  in the project README.
+  under `docs/`, with `docs/index.md` as the entry point. `README.md` is a
+  short introduction that links there.
 - No database, migrations, DI container, HTTP controllers, views, events, jobs,
   or harness wiring exist in the crate.
 
@@ -112,16 +113,27 @@ crates.io. The package is `komply`; the binary is `comply`.
           mod.rs
           rules/
             mod.rs
+            errors.rs
             repository.rs
             models.rs
           files/
             mod.rs
+            errors.rs
             repository.rs
             models.rs
           decisions/
             mod.rs
+            errors.rs
             repository.rs
             models.rs
+  docs/
+    index.md
+    usage.md
+    rules.md
+    config.md
+    ignores.md
+    security.md
+  README.md
   .opencode/
     skills/
       services/
@@ -137,7 +149,8 @@ crates.io. The package is `komply`; the binary is `comply`.
 ```
 
 `src/lib.rs` exposes `config` and `services`. `src/bin/cli.rs` uses the library;
-it holds no domain logic.
+it holds no domain logic. Each repository owns its domain models in `models.rs`
+and its error enum in `errors.rs`; `mod.rs` re-exports what callers use.
 
 ### Crate manifest
 
@@ -373,6 +386,8 @@ The decisions repository posts one JSON body:
 - No `criteria` is sent. A self-contained statement is the contract.
 - The response is read as `answers.<key>.noul` plus `usage.cost`,
   `usage.input_tokens`, and `usage.output_tokens`.
+- The decisions repository returns a `Decision` value. The HTTP body and wire
+  types stay private to the repository; the service sees only the domain noun.
 - Every requested key must be present, must have `type = "noul"`, and must carry
   a probability in `[0, 1]`. Anything else is a decode error.
 - The request timeout is `request_timeout_seconds`.
@@ -382,9 +397,10 @@ Transport retries:
 - Retry `429`, every `5xx`, and a `402` whose body has
   `error.metadata.limit_source = "openrouter_in_flight_budget"`.
 - Do not retry any other `4xx`, including an ordinary `402`.
-- At most five attempts.
+- At most three retries after the first attempt, so four attempts in total.
 - Honour a numeric `Retry-After` header; ignore an HTTP-date value.
-- Otherwise back off from `1s`, doubling to a `30s` cap, with a small jitter.
+- Otherwise back off from `1s`, doubling to a `30s` cap, with deterministic
+  jitter of `(attempt * 37) % 250` ms derived from the attempt number.
 - On exhaustion, return the status and response body.
 
 ### Verdicts, exit codes, and errors
@@ -542,7 +558,7 @@ tests/fixtures/project/
 |---|---|---|---|
 | T1 | crate, config, services, repositories | Project shell; `Config`; rule model; rule loader; exact path matching; duplicate / no-match / no-enabled errors | — |
 | T2 | services, repositories, cli | File collection; `.complyignore`; document assembly; size cap; `Service::prepare`; offline `--dry-run` CLI | T1 |
-| T3 | repositories | Decisions repository: OpenRouter request/response, auth, timeout, retry policy, response validation | T1 |
+| T3 | repositories | Decisions repository: `Decision` return type, OpenRouter request/response, auth, timeout, internal retry budget, response validation | T1 |
 | T4 | services, cli, docs | `Service::run`/`check`; verdicts; report; live CLI output; exit codes; README | T2, T3 |
 
 T2 and T3 can proceed in parallel after T1. T4 is the integration task.
@@ -556,7 +572,7 @@ T2 and T3 can proceed in parallel after T1. T4 is the integration task.
   only for a live run. `--dry-run` and all tests stay offline.
 - The tool reads any UTF-8 file under the tested directory. Projects must use
   `.complyignore` or `[files].exclude` to keep secrets and generated content out
-  of the document. The README will say this explicitly.
+  of the document. `docs/security.md` will say this explicitly.
 - The API key is never written to disk, printed, or placed in the request body.
 
 ## Out of scope
@@ -589,6 +605,15 @@ T2 and T3 can proceed in parallel after T1. T4 is the integration task.
   not per-invocation choices. `--model` is the only useful per-run override.
 - **Why exit `3` for unsure?** It distinguishes "could not confirm" from both
   compliance and a violation while still failing a script.
+- **Why does the decisions repository return `Decision`?** A repository returns
+  a domain noun, not an HTTP envelope. `Decision` carries the answers and usage;
+  the wire types stay private. The service never reads a status code or a body.
+- **Why are retries hardcoded in the decisions repository?** The budget is small
+  and fixed, so it needs no per-run override. Keeping the retry loop inside the
+  HTTP boundary follows `@repositories` and keeps the service free of transport
+  concerns. Tests use a zero-delay setting.
+- **Where do user docs live?** Under `docs/`, with `docs/index.md` as the entry
+  point. `README.md` is a short introduction, as `@documentation` asks.
 
 ## Maintainer steps
 

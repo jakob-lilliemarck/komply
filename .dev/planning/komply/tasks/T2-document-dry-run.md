@@ -12,7 +12,8 @@ the redacted request JSON.
 
 ## Definition of done
 
-- `src/services/testing/repositories/files/` exists and implements
+- `src/services/testing/repositories/files/` exists with `mod.rs`, `errors.rs`,
+  `repository.rs`, and `models.rs`, re-exports its public items, and implements
   `FilesRepository` with `load_ignore` and `collect`.
 - `Service` owns a `FilesRepository` and implements `prepare`.
 - `src/bin/cli.rs` parses `test <dir> [--rules <path>] [--dry-run] [--model <id>]`.
@@ -83,6 +84,7 @@ impl FilesRepository {
     ) -> Result<Collected, Error>;
 }
 
+// src/services/testing/repositories/files/errors.rs — new
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("could not read `{path}`: {source}")]
