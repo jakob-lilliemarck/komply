@@ -1,8 +1,8 @@
 # komply
 
-Komply checks a directory against architectural statements. It reads rule files
-from `.architecture/`, sends the selected files and statements to Jev through
-OpenRouter, and prints a pass / violation / unsure checklist.
+Komply checks a directory against architectural requirements. It reads rule
+files from `.architecture/`, sends the selected files and requirements to Jev
+through OpenRouter, and prints a pass / violation / unsure checklist.
 
 The package is `komply`; the installed command is `comply`.
 
@@ -22,8 +22,8 @@ cat > .architecture/repositories.toml <<'EOF'
 path = "src/services/*/repositories/*"
 
 [[rules]]
-id = "repo.no-inline-sql"
-statement = "The code contains inline SQL."
+id = "repo.typed-errors"
+statement = "A repository defines its own `Error` enum with `thiserror`."
 EOF
 ```
 

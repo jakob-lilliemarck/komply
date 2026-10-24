@@ -1,0 +1,19 @@
+path = [
+  "src/services/*/repositories/files",
+  "src/services/*/repositories/rules",
+]
+
+[[rules]]
+id = "filesystem.path-inputs"
+statement = "The filesystem repository receives its paths as method arguments and returns the data read from them."
+enabled = true
+
+[[rules]]
+id = "filesystem.read-only"
+statement = "The filesystem repository is read-only."
+enabled = true
+
+[[rules]]
+id = "filesystem.std-access"
+statement = "The filesystem repository accesses files through the standard library's filesystem API."
+enabled = true

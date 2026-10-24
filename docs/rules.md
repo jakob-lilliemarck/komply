@@ -14,37 +14,49 @@ include = ["**/*"]
 exclude = ["target/**", "**/*.lock"]
 
 [[rules]]
-id = "repo.no-domain-branching"
-statement = "There is at least one method implemented on Read, Write or WriteTx that is not a wrapper around search_*, store_* or archive_* functions."
+id = "repo.typed-errors"
+statement = "A repository defines its own `Error` enum with `thiserror`."
 enabled = true
 
 [[rules]]
-id = "repo.no-inline-sql"
-statement = "The code contains inline SQL."
+id = "repo.query-per-file"
+statement = "Each query function lives in its own file under `queries/`."
 enabled = false
 ```
 
 | Field | Meaning |
 |---|---|
-| `path` | Required in the default load mode. A glob relative to the working directory. |
+| `path` | Required in the default load mode. A glob, or an array of globs, relative to the working directory. A file is selected when any glob matches. |
 | `[files].include` | Optional. Target-relative globs. Defaults to `["**/*"]`. |
 | `[files].exclude` | Optional. Target-relative globs. |
 | `[[rules]].id` | Required and unique. |
 | `[[rules]].statement` | Required and non-empty. |
 | `[[rules]].enabled` | Optional. Defaults to `true`. |
 
-A rule is a declarative statement. Komply wraps it as:
+A rule is a declarative requirement. Komply wraps it as:
 
 ```text
 Is the following statement true of the attached code? <statement>
 ```
 
-A high probability means the statement is true, which is a violation.
+A high probability means the statement is true, which is a pass. `noul` is the
+probability that the code satisfies the statement.
 
 ## Path matching
 
-The tested directory must match a rule file's `path` exactly. `*` matches one
-path segment; `**` crosses segments.
+The tested directory must match one of a rule file's `path` globs. `*` matches
+one path segment; `**` crosses segments. Use an array to apply one rule set to
+several locations:
+
+```toml
+path = [
+  "src/services/*/repositories/files",
+  "src/services/*/repositories/rules",
+]
+```
+
+A rule file is selected when any of its globs matches. The tested directory does
+not need to match every glob.
 
 - `path = "src/services/*"` matches `src/services/alpha`, not
   `src/services/alpha/repositories`.

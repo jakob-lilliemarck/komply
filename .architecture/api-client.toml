@@ -1,0 +1,21 @@
+path = "src/services/*/repositories/decisions"
+
+[[rules]]
+id = "api-client.transport"
+statement = "The API client repository holds its endpoint and credentials as fields set in its constructor."
+enabled = true
+
+[[rules]]
+id = "api-client.wire-mapping"
+statement = "The API client repository deserializes the wire response into internal wire types and returns a `Decision`."
+enabled = true
+
+[[rules]]
+id = "api-client.retries"
+statement = "The API client repository retries transient failures inside one `evaluate` call."
+enabled = true
+
+[[rules]]
+id = "api-client.http-only"
+statement = "The API client repository accesses data through an HTTP request sent with `ureq`."
+enabled = true

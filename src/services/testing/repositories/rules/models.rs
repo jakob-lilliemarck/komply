@@ -5,7 +5,7 @@ use serde::Deserialize;
 /// One rule file and the rules it contributes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuleSet {
-    pub path: Option<String>,
+    pub paths: Vec<String>,
     pub files: FileSelection,
     pub rules: Vec<Rule>,
     pub source: PathBuf,
@@ -29,11 +29,19 @@ pub struct Rule {
 #[derive(Debug, Deserialize)]
 pub(crate) struct RuleFile {
     #[serde(default)]
-    pub(crate) path: Option<String>,
+    pub(crate) path: Option<PathSpec>,
     #[serde(default)]
     pub(crate) files: Option<FilesSection>,
     #[serde(default)]
     pub(crate) rules: Vec<RuleEntry>,
+}
+
+/// A rule file's path selector: one glob or several.
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub(crate) enum PathSpec {
+    One(String),
+    Many(Vec<String>),
 }
 
 #[derive(Debug, Deserialize)]

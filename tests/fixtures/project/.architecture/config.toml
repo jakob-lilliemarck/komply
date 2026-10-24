@@ -1,6 +1,6 @@
 [comply]
 model = "typesafe/jev-1.13"
-violation_threshold = 0.80
-clean_threshold = 0.20
+pass_threshold = 0.80
+fail_threshold = 0.20
 max_document_bytes = 400000
 request_timeout_seconds = 60

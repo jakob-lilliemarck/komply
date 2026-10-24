@@ -5,11 +5,11 @@ include = ["**/*"]
 exclude = ["target/**", "**/*.lock"]
 
 [[rules]]
-id = "repo.no-domain-branching"
-statement = "There is at least one method implemented on Read, Write or WriteTx that is not a wrapper around search_*, store_* or archive_* functions."
+id = "repo.facade"
+statement = "A repository separates its public API from its internal helper functions."
 enabled = true
 
 [[rules]]
-id = "repo.no-inline-sql"
-statement = "The code contains inline SQL."
+id = "repo.typed-queries"
+statement = "Queries are statically checked with `sqlx::query_as!` or `sqlx::query!`."
 enabled = false

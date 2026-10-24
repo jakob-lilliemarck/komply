@@ -18,7 +18,7 @@ config, and builds the service. The service owns the decisions:
 3. Collect the target's UTF-8 files.
 4. Build one state document from the files.
 5. Build one `noul` question per enabled rule.
-6. Send one request and map every probability to a verdict.
+6. Send one request and map every compliance probability to a verdict.
 
 The repositories only read data:
 

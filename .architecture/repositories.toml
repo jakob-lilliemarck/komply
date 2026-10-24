@@ -1,31 +1,41 @@
 path = "src/services/*/repositories/*"
 
 [[rules]]
-id = "repo.no-hidden-inputs"
-statement = "A repository method other than `from_env` reads environment variables, the current directory, or the system clock."
+id = "repo.data-methods"
+statement = "Every public method on a repository struct, other than a constructor, returns repository model data or a typed error."
 enabled = true
 
 [[rules]]
-id = "repo.domain-returns"
-statement = "A public repository method returns an HTTP response, a serialization type, or a string error instead of a domain value or a typed `thiserror` error."
+id = "repo.data-method-names"
+statement = "A repository's public methods other than constructors are named with data-access verbs such as `search`, `get`, `load`, `store`, `archive`, `collect`, or `evaluate`."
 enabled = true
 
 [[rules]]
-id = "repo.no-side-effects"
-statement = "A public method in this repository prints to the terminal, exits the process, writes to disk, or sends an HTTP request from `rules/` or `files/`."
+id = "repo.batch-operations"
+statement = "A repository returns several items in one collection or model."
 enabled = true
 
 [[rules]]
-id = "repo.no-domain-policy"
-statement = "The code compares a probability with a configured threshold, creates a `Verdict`, or selects rule sets by matching a rule file's `path` against the tested directory."
+id = "repo.facade"
+statement = "A repository separates its public API from its internal helper functions."
 enabled = true
 
 [[rules]]
-id = "repo.no-cross-repository-dependency"
-statement = "The code contains a line that starts with `use crate::services::testing::repositories::`."
+id = "repo.explicit-inputs"
+statement = "A repository method other than a constructor receives the data it works on as arguments."
 enabled = true
 
 [[rules]]
-id = "repo.no-upward-dependency"
-statement = "The code imports a type from the service model at `crate::services::testing::model`."
+id = "repo.self-contained"
+statement = "A repository has no `use crate::services::...` line."
+enabled = true
+
+[[rules]]
+id = "repo.model-encapsulation"
+statement = "A repository model's fields are `pub(super)` and its accessors are `pub`."
+enabled = true
+
+[[rules]]
+id = "repo.typed-errors"
+statement = "A repository defines its own `Error` enum with `thiserror`."
 enabled = true

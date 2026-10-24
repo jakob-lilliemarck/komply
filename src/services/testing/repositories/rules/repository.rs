@@ -3,7 +3,7 @@ use std::fs;
 use std::path::Path;
 
 use super::errors::Error;
-use super::models::{FileSelection, Rule, RuleFile, RuleSet};
+use super::models::{FileSelection, PathSpec, Rule, RuleFile, RuleSet};
 
 /// Reads rule files. It loads one file, or every `*.toml` directly inside a
 /// directory except `config.toml`.
@@ -89,14 +89,28 @@ fn load_file(path: &Path) -> Result<RuleSet, Error> {
         source,
     })?;
 
-    let path_value = match file.path {
-        Some(path_value) if path_value.trim().is_empty() => {
+    let paths = match file.path {
+        Some(PathSpec::One(value)) => vec![value],
+        Some(PathSpec::Many(values)) if values.is_empty() => {
             return Err(Error::EmptyPath {
                 path: path.to_path_buf(),
             });
         }
-        path_value => path_value,
+        Some(PathSpec::Many(values)) => values,
+        None => Vec::new(),
     };
+
+    if paths.iter().any(|value| value.trim().is_empty()) {
+        return Err(Error::EmptyPath {
+            path: path.to_path_buf(),
+        });
+    }
+
+    let mut seen_paths = HashSet::new();
+    let paths: Vec<String> = paths
+        .into_iter()
+        .filter(|value| seen_paths.insert(value.clone()))
+        .collect();
 
     let files = file
         .files
@@ -137,7 +151,7 @@ fn load_file(path: &Path) -> Result<RuleSet, Error> {
     }
 
     Ok(RuleSet {
-        path: path_value,
+        paths,
         files,
         rules,
         source: path.to_path_buf(),
@@ -171,7 +185,7 @@ mod tests {
         let sets = repository.load(&file).unwrap();
 
         assert_eq!(sets.len(), 1);
-        assert_eq!(sets[0].path.as_deref(), Some("src/*"));
+        assert_eq!(sets[0].paths, vec!["src/*".to_owned()]);
         assert_eq!(sets[0].rules.len(), 1);
         assert_eq!(sets[0].rules[0].id, "rule.one");
         assert_eq!(sets[0].source, file);
@@ -275,6 +289,76 @@ mod tests {
     }
 
     #[test]
+    fn it_loads_an_array_of_paths_in_order() {
+        let directory = TempDir::new().unwrap();
+        let file = directory.path().join("rules.toml");
+        std::fs::write(
+            &file,
+            "path = [\"src/*\", \"tests/*\"]\n[[rules]]\nid = \"rule.one\"\nstatement = \"One.\"\n",
+        )
+        .unwrap();
+        let repository = RulesRepository::new();
+
+        let sets = repository.load(&file).unwrap();
+
+        assert_eq!(
+            sets[0].paths,
+            vec!["src/*".to_owned(), "tests/*".to_owned()]
+        );
+    }
+
+    #[test]
+    fn it_deduplicates_paths_in_order() {
+        let directory = TempDir::new().unwrap();
+        let file = directory.path().join("rules.toml");
+        std::fs::write(
+            &file,
+            "path = [\"src/*\", \"tests/*\", \"src/*\"]\n[[rules]]\nid = \"rule.one\"\nstatement = \"One.\"\n",
+        )
+        .unwrap();
+        let repository = RulesRepository::new();
+
+        let sets = repository.load(&file).unwrap();
+
+        assert_eq!(
+            sets[0].paths,
+            vec!["src/*".to_owned(), "tests/*".to_owned()]
+        );
+    }
+
+    #[test]
+    fn it_rejects_an_empty_path_array() {
+        let directory = TempDir::new().unwrap();
+        let file = directory.path().join("rules.toml");
+        std::fs::write(
+            &file,
+            "path = []\n[[rules]]\nid = \"rule.one\"\nstatement = \"One.\"\n",
+        )
+        .unwrap();
+        let repository = RulesRepository::new();
+
+        let error = repository.load(&file).unwrap_err();
+
+        assert!(matches!(error, Error::EmptyPath { .. }));
+    }
+
+    #[test]
+    fn it_rejects_an_empty_path_in_an_array() {
+        let directory = TempDir::new().unwrap();
+        let file = directory.path().join("rules.toml");
+        std::fs::write(
+            &file,
+            "path = [\"src/*\", \"  \"]\n[[rules]]\nid = \"rule.one\"\nstatement = \"One.\"\n",
+        )
+        .unwrap();
+        let repository = RulesRepository::new();
+
+        let error = repository.load(&file).unwrap_err();
+
+        assert!(matches!(error, Error::EmptyPath { .. }));
+    }
+
+    #[test]
     fn it_rejects_a_duplicate_id_within_one_file() {
         let directory = TempDir::new().unwrap();
         let file = directory.path().join("rules.toml");
@@ -291,7 +375,7 @@ mod tests {
     }
 
     #[test]
-    fn it_defaults_enabled_to_true_and_keeps_an_absent_path_as_none() {
+    fn it_defaults_enabled_to_true_and_keeps_an_absent_path_empty() {
         let directory = TempDir::new().unwrap();
         let file = directory.path().join("rules.toml");
         std::fs::write(&file, rule_file(None, "rule.one")).unwrap();
@@ -299,7 +383,7 @@ mod tests {
 
         let sets = repository.load(&file).unwrap();
 
-        assert_eq!(sets[0].path, None);
+        assert!(sets[0].paths.is_empty());
         assert!(sets[0].rules[0].enabled);
     }
 

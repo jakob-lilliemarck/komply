@@ -11,8 +11,8 @@ use serde::Deserialize;
 #[derive(Debug, Clone, PartialEq)]
 pub struct Config {
     pub model: String,
-    pub violation_threshold: f64,
-    pub clean_threshold: f64,
+    pub pass_threshold: f64,
+    pub fail_threshold: f64,
     pub max_document_bytes: usize,
     pub request_timeout: Duration,
 }
@@ -21,8 +21,8 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             model: "typesafe/jev-1.13".to_owned(),
-            violation_threshold: 0.80,
-            clean_threshold: 0.20,
+            pass_threshold: 0.80,
+            fail_threshold: 0.20,
             max_document_bytes: 400_000,
             request_timeout: Duration::from_secs(60),
         }
@@ -54,11 +54,11 @@ impl Config {
             if let Some(model) = comply.model {
                 config.model = model;
             }
-            if let Some(value) = comply.violation_threshold {
-                config.violation_threshold = value;
+            if let Some(value) = comply.pass_threshold {
+                config.pass_threshold = value;
             }
-            if let Some(value) = comply.clean_threshold {
-                config.clean_threshold = value;
+            if let Some(value) = comply.fail_threshold {
+                config.fail_threshold = value;
             }
             if let Some(value) = comply.max_document_bytes {
                 config.max_document_bytes = value;
@@ -73,30 +73,30 @@ impl Config {
     }
 
     fn validate(&self, path: &Path) -> Result<(), ConfigError> {
-        if !(0.0..=1.0).contains(&self.clean_threshold) {
+        if !(0.0..=1.0).contains(&self.pass_threshold) {
             return Err(invalid(
                 path,
                 format!(
-                    "clean_threshold must be in [0, 1], got {}",
-                    self.clean_threshold
+                    "pass_threshold must be in [0, 1], got {}",
+                    self.pass_threshold
                 ),
             ));
         }
-        if !(0.0..=1.0).contains(&self.violation_threshold) {
+        if !(0.0..=1.0).contains(&self.fail_threshold) {
             return Err(invalid(
                 path,
                 format!(
-                    "violation_threshold must be in [0, 1], got {}",
-                    self.violation_threshold
+                    "fail_threshold must be in [0, 1], got {}",
+                    self.fail_threshold
                 ),
             ));
         }
-        if self.clean_threshold >= self.violation_threshold {
+        if self.fail_threshold >= self.pass_threshold {
             return Err(invalid(
                 path,
                 format!(
-                    "clean_threshold ({}) must be less than violation_threshold ({})",
-                    self.clean_threshold, self.violation_threshold
+                    "fail_threshold ({}) must be less than pass_threshold ({})",
+                    self.fail_threshold, self.pass_threshold
                 ),
             ));
         }
@@ -124,19 +124,21 @@ fn invalid(path: &Path, message: String) -> ConfigError {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ConfigFile {
     #[serde(default)]
     comply: Option<ComplySection>,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ComplySection {
     #[serde(default)]
     model: Option<String>,
     #[serde(default)]
-    violation_threshold: Option<f64>,
+    pass_threshold: Option<f64>,
     #[serde(default)]
-    clean_threshold: Option<f64>,
+    fail_threshold: Option<f64>,
     #[serde(default)]
     max_document_bytes: Option<usize>,
     #[serde(default)]
@@ -175,8 +177,8 @@ mod tests {
         r#"
 [comply]
 model = "test/model"
-violation_threshold = 0.9
-clean_threshold = 0.1
+pass_threshold = 0.9
+fail_threshold = 0.1
 max_document_bytes = 1234
 request_timeout_seconds = 7
 "#
@@ -199,8 +201,8 @@ request_timeout_seconds = 7
         let config = Config::load(root.path()).unwrap();
 
         assert_eq!(config.model, "test/model");
-        assert_eq!(config.violation_threshold, 0.9);
-        assert_eq!(config.clean_threshold, 0.1);
+        assert_eq!(config.pass_threshold, 0.9);
+        assert_eq!(config.fail_threshold, 0.1);
         assert_eq!(config.max_document_bytes, 1234);
         assert_eq!(config.request_timeout, Duration::from_secs(7));
     }
@@ -213,8 +215,8 @@ request_timeout_seconds = 7
         let config = Config::load(root.path()).unwrap();
 
         assert_eq!(config.model, "test/model");
-        assert_eq!(config.violation_threshold, 0.80);
-        assert_eq!(config.clean_threshold, 0.20);
+        assert_eq!(config.pass_threshold, 0.80);
+        assert_eq!(config.fail_threshold, 0.20);
         assert_eq!(config.max_document_bytes, 400_000);
         assert_eq!(config.request_timeout, Duration::from_secs(60));
     }
@@ -240,11 +242,11 @@ request_timeout_seconds = 7
     }
 
     #[test]
-    fn it_rejects_clean_threshold_at_or_above_violation_threshold() {
+    fn it_rejects_fail_threshold_at_or_above_pass_threshold() {
         let root = TempDir::new().unwrap();
         write_config(
             root.path(),
-            "[comply]\nclean_threshold = 0.8\nviolation_threshold = 0.8\n",
+            "[comply]\nfail_threshold = 0.8\npass_threshold = 0.8\n",
         );
 
         let error = Config::load(root.path()).unwrap_err();
@@ -255,11 +257,21 @@ request_timeout_seconds = 7
     #[test]
     fn it_rejects_thresholds_outside_the_unit_interval() {
         let root = TempDir::new().unwrap();
-        write_config(root.path(), "[comply]\nclean_threshold = -0.1\n");
+        write_config(root.path(), "[comply]\nfail_threshold = -0.1\n");
 
         let error = Config::load(root.path()).unwrap_err();
 
         assert!(matches!(error, ConfigError::Invalid { .. }));
+    }
+
+    #[test]
+    fn it_rejects_the_old_threshold_keys() {
+        let root = TempDir::new().unwrap();
+        write_config(root.path(), "[comply]\nclean_threshold = 0.2\n");
+
+        let error = Config::load(root.path()).unwrap_err();
+
+        assert!(matches!(error, ConfigError::Parse { .. }));
     }
 
     #[test]

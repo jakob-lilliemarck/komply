@@ -26,9 +26,9 @@ Target:  src/services/alpha/repositories/tasks
 Model:   typesafe/jev-1.13
 Files:   3 (60 bytes)
 
-  [pending] repo.no-domain-branching
+  [pending] repo.typed-errors
 
-  [PASS]      repo.no-domain-branching  noul=0.04
+  [PASS]      repo.typed-errors  noul=0.96
 
 0 violations, 0 unsure, 1 pass · $0.00012 · 476 input tokens
 ```

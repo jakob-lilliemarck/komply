@@ -108,7 +108,7 @@ pub enum Verdict {
     Unsure,
 }
 
-/// One rule and the probability that its statement is true.
+/// One rule and the probability that the code satisfies its statement.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RuleResult {
     pub id: String,

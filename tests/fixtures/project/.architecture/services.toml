@@ -1,6 +1,6 @@
 path = "src/services/*"
 
 [[rules]]
-id = "service.no-cross-service-writes"
-statement = "The code writes to a table owned by another service."
+id = "service.owns-its-tables"
+statement = "A service reads and writes only its own tables."
 enabled = true

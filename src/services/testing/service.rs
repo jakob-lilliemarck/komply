@@ -202,13 +202,13 @@ impl Service {
 
 /// Maps a probability to a verdict using the configured thresholds.
 ///
-/// Both boundaries are inclusive: `>= violation_threshold` is a violation and
-/// `<= clean_threshold` is a pass.
+/// Both boundaries are inclusive: `>= pass_threshold` is a pass and
+/// `<= fail_threshold` is a violation.
 pub fn verdict(noul: f64, config: &Config) -> Verdict {
-    if noul >= config.violation_threshold {
-        Verdict::Violation
-    } else if noul <= config.clean_threshold {
+    if noul >= config.pass_threshold {
         Verdict::Pass
+    } else if noul <= config.fail_threshold {
+        Verdict::Violation
     } else {
         Verdict::Unsure
     }
@@ -251,22 +251,29 @@ fn select_by_path(sets: Vec<RuleSet>, target: &str) -> Result<Vec<RuleSet>, Erro
     let mut selected = Vec::new();
 
     for set in sets {
-        let pattern = set
-            .path
-            .as_ref()
-            .ok_or_else(|| Error::MissingRulePath(set.source.clone()))?;
-        available.push(pattern.clone());
+        if set.paths.is_empty() {
+            return Err(Error::MissingRulePath(set.source.clone()));
+        }
 
-        let glob = GlobBuilder::new(pattern)
-            .literal_separator(true)
-            .build()
-            .map_err(|source| Error::InvalidRulePath {
-                path: set.source.clone(),
-                pattern: pattern.clone(),
-                source,
-            })?;
+        let mut matched = false;
+        for pattern in &set.paths {
+            available.push(pattern.clone());
 
-        if glob.compile_matcher().is_match(target) {
+            let glob = GlobBuilder::new(pattern)
+                .literal_separator(true)
+                .build()
+                .map_err(|source| Error::InvalidRulePath {
+                    path: set.source.clone(),
+                    pattern: pattern.clone(),
+                    source,
+                })?;
+
+            if glob.compile_matcher().is_match(target) {
+                matched = true;
+            }
+        }
+
+        if matched {
             selected.push(set);
         }
     }
@@ -414,6 +421,63 @@ mod tests {
 
         assert_eq!(sets.len(), 1);
         assert_eq!(sets[0].rules[0].id, "repository.rule");
+    }
+
+    #[test]
+    fn it_selects_a_rule_set_when_any_path_matches() {
+        let root = TempDir::new().unwrap();
+        write_rule(
+            root.path(),
+            "a.toml",
+            "path = [\"src/*\", \"tests/*\"]\n[[rules]]\nid = \"rule.a\"\nstatement = \"A.\"\n",
+        );
+        let target = root.path().join("tests/alpha");
+
+        let sets = service()
+            .resolve_rules(&request(root.path(), &target, None))
+            .unwrap();
+
+        assert_eq!(sets.len(), 1);
+        assert_eq!(sets[0].rules[0].id, "rule.a");
+    }
+
+    #[test]
+    fn it_reports_every_pattern_from_an_unmatched_array() {
+        let root = TempDir::new().unwrap();
+        write_rule(
+            root.path(),
+            "a.toml",
+            "path = [\"a/*\", \"b/*\"]\n[[rules]]\nid = \"rule.a\"\nstatement = \"A.\"\n",
+        );
+        let target = root.path().join("c");
+
+        let error = service()
+            .resolve_rules(&request(root.path(), &target, None))
+            .unwrap_err();
+
+        match error {
+            Error::NoRulesMatch { available, .. } => {
+                assert_eq!(available, vec!["a/*".to_owned(), "b/*".to_owned()]);
+            }
+            other => panic!("unexpected error: {other}"),
+        }
+    }
+
+    #[test]
+    fn it_rejects_an_invalid_glob_in_an_array() {
+        let root = TempDir::new().unwrap();
+        write_rule(
+            root.path(),
+            "a.toml",
+            "path = [\"src/*\", \"[\"]\n[[rules]]\nid = \"rule.a\"\nstatement = \"A.\"\n",
+        );
+        let target = root.path().join("src/alpha");
+
+        let error = service()
+            .resolve_rules(&request(root.path(), &target, None))
+            .unwrap_err();
+
+        assert!(matches!(error, Error::InvalidRulePath { .. }));
     }
 
     #[test]
@@ -649,7 +713,7 @@ mod tests {
         );
         assert_eq!(prepared.rule_source_display, ".architecture");
         assert_eq!(prepared.rules.len(), 1);
-        assert_eq!(prepared.rules[0].id, "repo.no-domain-branching");
+        assert_eq!(prepared.rules[0].id, "repo.facade");
         assert_eq!(
             document_paths(&prepared),
             vec![
@@ -688,7 +752,7 @@ mod tests {
         let prepared = service.prepare(request(&root, &target, None)).unwrap();
 
         assert_eq!(prepared.rules.len(), 1);
-        assert_eq!(prepared.rules[0].id, "service.no-cross-service-writes");
+        assert_eq!(prepared.rules[0].id, "service.owns-its-tables");
         assert_eq!(prepared.document.files.len(), 5);
         assert_eq!(prepared.skipped.len(), 1);
         assert_eq!(prepared.skipped[0].display_path(), "assets/logo.bin");
@@ -847,8 +911,8 @@ mod tests {
     fn it_maps_probabilities_to_verdicts_at_the_boundaries() {
         let config = Config::default();
 
-        assert_eq!(verdict(0.80, &config), Verdict::Violation);
-        assert_eq!(verdict(0.20, &config), Verdict::Pass);
+        assert_eq!(verdict(0.80, &config), Verdict::Pass);
+        assert_eq!(verdict(0.20, &config), Verdict::Violation);
         assert_eq!(verdict(0.50, &config), Verdict::Unsure);
         assert_eq!(verdict(0.79, &config), Verdict::Unsure);
         assert_eq!(verdict(0.21, &config), Verdict::Unsure);
@@ -867,7 +931,7 @@ mod tests {
         std::fs::write(src.join("a.rs"), "a").unwrap();
         let prepared = service().prepare(request(root.path(), &src, None)).unwrap();
         let url = stub(
-            r#"{"answers":{"r0":{"type":"noul","noul":0.91},"r1":{"type":"noul","noul":0.04},"r2":{"type":"noul","noul":0.54}},"usage":{"cost":0.00012,"input_tokens":476,"output_tokens":5}}"#,
+            r#"{"answers":{"r0":{"type":"noul","noul":0.04},"r1":{"type":"noul","noul":0.91},"r2":{"type":"noul","noul":0.54}},"usage":{"cost":0.00012,"input_tokens":476,"output_tokens":5}}"#,
         );
         let decisions = DecisionsRepository::new("key", url, Duration::from_secs(5));
 
@@ -917,7 +981,7 @@ mod tests {
         let config = Config::load(&root).unwrap();
         let service = Service::new(RulesRepository::new(), FilesRepository::new(), config);
         let target = root.join("src/services/alpha/repositories/tasks");
-        let url = stub(r#"{"answers":{"r0":{"type":"noul","noul":0.1}}}"#);
+        let url = stub(r#"{"answers":{"r0":{"type":"noul","noul":0.9}}}"#);
         let decisions = DecisionsRepository::new("key", url, Duration::from_secs(5));
 
         let report = service
@@ -925,7 +989,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(report.results.len(), 1);
-        assert_eq!(report.results[0].id, "repo.no-domain-branching");
+        assert_eq!(report.results[0].id, "repo.facade");
         assert_eq!(report.results[0].verdict, Verdict::Pass);
     }
 
